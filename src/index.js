@@ -1,69 +1,65 @@
 #!/usr/bin/env node
-const inquirer = require("inquirer");
-const path = require('path');
-const { writeFile, readdir, readFile } = require("fs").promises;
 
-const configFiles = {};
-const configFolderPath = path.resolve(__dirname, 'config');
+const path = require("path");
+const fs = require("fs");
+const { resolve } = require("path");
+const { readdir } = require("fs").promises;
+const cwdpath = path.parse(process.cwd());
+const srcdir = cwdpath.dir;
+let rootdir = ".";
+let public = "./src/public";
 
-const defaultTechnology = { "technology": "node(Default)" };
-
-(async () => {
-
-  const files = await readdir(configFolderPath).catch(console.log);
-  const useDefault = process.argv[2] === "-y";
-
-  for (let i of files) {
-    // framework name is situated between 2 dots eg- react between 2 '.'(s)
-    const frameworkName = i.split('.')[1];
-    configFiles[frameworkName] = path.join(configFolderPath, i);
+if (fs.existsSync(`${rootdir}/package.json`)) {
+  console.log(true);
+  if (fs.existsSync(public)) {
+    public = path.resolve(public);
+  } else if (fs.existsSync("./public")) {
+    public = "./public";
+  } else {
+    console.log("no public");
   }
 
-  const { technology } = useDefault ? defaultTechnology : await inquirer.prompt([
-    {
-      type: "list",
-      message: "Pick the technology you're using:",
-      name: "technology",
-      choices: Object.keys(configFiles),
-    }
-  ])
-
-  let config = await readFile(configFiles[technology]).catch(console.log);
-
-  const tsconfig = path.join(process.cwd(), 'tsconfig.json');
-
-  if (technology === "node") {
-    const reg = new RegExp(/(?<=v)(\d+)/);
-    const version = parseInt(reg.exec(process.version)[0]);
-
-    if (version >= 14) {
-      // Optimal config for Node v14.0.0 (full ES2020)
-      const updateConfig = {
-        allowSyntheticDefaultImports: true,
-        lib: ["es2020"],
-        module: "commonjs",
-        moduleResolution: "node",
-        target: "es2020",
-      };
-
-      const configObj = Object.keys(updateConfig).reduce((prev, curr) => {
-        return {
-          ...prev,
-          compilerOptions: {
-            ...prev.compilerOptions,
-            [curr]: updateConfig[curr],
-          },
-        };
-      }, JSON.parse(config.toString()));
-
-      config = JSON.stringify(configObj, null, 2);
+  async function* getFiles(dir) {
+    const dirents = await readdir(dir, { withFileTypes: true });
+    for (const dirent of dirents) {
+      const res = resolve(dir, dirent.name);
+      if (dirent.isDirectory()) {
+        yield* getFiles(res);
+      } else {
+        yield res;
+      }
     }
   }
 
-  await writeFile(tsconfig, config.toString()).catch(err => {
-    console.log(err);
-    process.exit();
-  });
+  (async () => {
+    const filePath = {};
+    const arr = [];
+    console.log(public);
+    public = public == "./public" ? path.basename(public) : public;
+    try {
+      for await (const f of getFiles(public)) {
+        const file = path.parse(f);
+        if (path.basename(file.dir) == "public") {
+          filePath[file.name.replaceAll("-", "")] = `/${file.base}`;
+        } else {
+          filePath[file.name.replace("-", "")] = `/${path.basename(file.dir)}/${
+            file.base
+          }`;
+        }
+      }
 
-  console.log("tsconfig.json successfully created");
-})();
+      console.log(filePath);
+      console.log(arr);
+
+      fs.writeFileSync(
+        `${rootdir}/public.json`,
+        JSON.stringify(filePath, null, 2),
+        "utf-8"
+      );
+    } catch (e) {
+      console.log(e);
+    }
+  })();
+} else {
+  console.log("run this command from the root of your project");
+}
