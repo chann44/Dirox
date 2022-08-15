@@ -1,18 +1,16 @@
-# tsconfig.json
-
-[Video](https://www.youtube.com/watch?v=0xjfkl9nODQ&ab_channel=BenAwad)
+# drox
 
 ## Usage
 
 Install as a dev dependency on a particular project:
 ```
 yarn add -D drox
-npx tsconfig.json
+npx drox
 ```
 
 Install globally(recommended if you are using typescript very often):
 ```bash
-yarn global add tsconfig.json
+yarn global add drox
 # now you don't have to prefix this command with npx!
-tsconfig.json
+drox
 ```
