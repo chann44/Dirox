@@ -6,7 +6,7 @@
 
 Install as a dev dependency on a particular project:
 ```
-yarn add -D tsconfig.json
+yarn add -D drox
 npx tsconfig.json
 ```
 
